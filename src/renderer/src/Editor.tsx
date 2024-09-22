@@ -54,8 +54,6 @@ const Editor: React.FC = () => {
       }
     }, 33);
     return () => {
-      console.log('clearing interval');
-      
       clearInterval(interval);
     };
   }, [clips]);
