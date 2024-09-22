@@ -23,6 +23,7 @@ const Editor: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [clips, setClips] = useState<Clip[]>([createClip([0, videoTime], 'gray')]);
+  const [isLoading, setLoading] = useState(false);
 
   const url = mockUrl;
 
@@ -100,14 +101,20 @@ const Editor: React.FC = () => {
 
   useEffect(() => {
     window.electron?.ipcRenderer.on('transcode-video-complete', (_, { binary }) => {
+      setLoading(false);
       downloadFile(binary, 'output.mp4', 'video/mp4');
     });
   }, []);
 
   async function handleExportClick() {
+    if (!clips.some(({ isHidden }) => isHidden)) {
+      return downloadFile(url, 'output.mp4', 'video/mp4');
+    }
+
+    setLoading(true);
     window.electron?.ipcRenderer.send('transcode-video', {
       url,
-      clips,
+      clips: clips.filter(({ isHidden }) => !isHidden),
     });
   }
 
@@ -125,7 +132,7 @@ const Editor: React.FC = () => {
               Split
             </Button>
             <Button variant="contained" onClick={handleExportClick}>
-              Export
+              {isLoading ? 'Loading...' : 'Export'}
             </Button>
           </Stack>
           <div>

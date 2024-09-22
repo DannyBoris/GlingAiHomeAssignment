@@ -63,53 +63,57 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'));
+
   ipcMain.on('transcode-video', async (event, params) => {
     console.log('Transcoding video');
     const outputPath = path.join(__dirname, 'output.mp4');
     const { url, clips } = params;
     const visibleClips = clips.filter((clip) => !clip.isHidden);
-    if (visibleClips.length === 0) return;
-    if (visibleClips.length === clips.length) {
-      return console.log('No hidden clips');
-    }
     const videoResponse = await fetch(url);
     const videoBlob = await videoResponse.blob();
     const arrayBuffer = await videoBlob.arrayBuffer();
     fs.writeFileSync(outputPath, Buffer.from(arrayBuffer));
     console.log('Transcoding video:', url);
     try {
-      let completed = 0;
-      visibleClips.forEach((clip, index: number) => {
-        const [start, end] = clip.range;
-        const output = path.join(__dirname, `output-${index + 1}.mp4`);
-        ffmpeg(outputPath)
-          .setStartTime(start)
-          .setDuration(end - start)
-          .output(output)
-          .on('end', () => {
-            completed++;
-            if (completed === visibleClips.length) {
-              console.log('Finished transcoding');
-              const mergeBase = ffmpeg();
-              visibleClips.forEach((_, index: number) => {
-                mergeBase.input(path.join(__dirname, `output-${index + 1}.mp4`));
-              });
-              mergeBase
-                .on('end', () => {
-                  event.sender.send('transcode-video-complete', {
-                    binary: fs.readFileSync(path.join(__dirname, 'output-merged.mp4')),
-                  });
-                  fs.unlinkSync(outputPath);
-                })
-                .on('error', (err) => console.log(err))
-                .mergeToFile(
-                  path.join(__dirname, 'output-merged.mp4'),
-                  path.join(__dirname, 'temp'),
-                );
-            }
-          })
-          .run();
+      await Promise.all(
+        visibleClips.map((clip, index) => {
+          return new Promise<void>((resolve, reject) => {
+            const [start, end] = clip.range;
+            const output = path.join(__dirname, `output-${index}.mp4`);
+            ffmpeg(outputPath)
+              .setStartTime(start)
+              .setDuration(end - start)
+              .output(output)
+              .on('end', () => {
+                console.log('Finished transcoding clip', index);
+                resolve();
+              })
+              .on('error', (err) => {
+                console.log('Error transcoding clip', index, err);
+                reject(err);
+              })
+              .run();
+          });
+        }),
+      );
+
+      console.log('Finished transcoding');
+
+      const mergeBase = ffmpeg();
+
+      visibleClips.forEach((_, index) => {
+        mergeBase.input(path.join(__dirname, `output-${index}.mp4`));
       });
+
+      mergeBase
+        .on('end', () => {
+          event.sender.send('transcode-video-complete', {
+            binary: fs.readFileSync(path.join(__dirname, 'output-merged.mp4')),
+          });
+          fs.unlinkSync(outputPath);
+        })
+        .on('error', (err) => console.log(err))
+        .mergeToFile(path.join(__dirname, 'output-merged.mp4'), path.join(__dirname, 'temp'));
     } catch (e: any) {
       console.log(e.code);
       console.log(e.msg);
