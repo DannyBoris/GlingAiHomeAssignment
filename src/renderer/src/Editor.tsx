@@ -40,11 +40,16 @@ const Editor: React.FC = () => {
 
       if (videoElRef.current) {
         if (currClip?.isHidden) {
-          const nextVisibleClip = clips.find(({ range, isHidden }) => {
-            if (!videoElRef.current) return null;
-            const [start] = range;
-            return !isHidden && videoElRef.current.currentTime < start;
-          });
+          let nextVisibleClip: Clip | null = null;
+          for (const clip of clips.slice(clips.indexOf(currClip) + 1)) {
+            if (clip.isHidden) continue;
+            const [start] = clip.range;
+            if (videoElRef.current.currentTime < start) {
+              nextVisibleClip = clip;
+              break;
+            }
+          }
+
           if (nextVisibleClip) {
             videoElRef.current.currentTime = nextVisibleClip.range[0];
           } else {
@@ -55,6 +60,7 @@ const Editor: React.FC = () => {
         setCurrentTime(videoElRef.current.currentTime);
       }
     }, 33);
+
     return () => {
       clearInterval(interval);
     };
@@ -110,6 +116,10 @@ const Editor: React.FC = () => {
   async function handleExportClick() {
     if (!clips.some(({ isHidden }) => isHidden)) {
       return downloadFile(url, 'output.mp4', 'video/mp4');
+    }
+    if (!window.electron) {
+      alert('Use Electron app to export editted video');
+      return;
     }
 
     setLoading(true);

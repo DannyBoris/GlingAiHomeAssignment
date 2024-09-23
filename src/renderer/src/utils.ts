@@ -1,5 +1,3 @@
-import { FileData } from '@ffmpeg/ffmpeg/dist/esm/types';
-
 export function stringToColor(str: string) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -15,7 +13,7 @@ export function stringToColor(str: string) {
   return color;
 }
 
-export function downloadFile(data: FileData | File, filename: string, type?: string) {
+export function downloadFile(data: File | string, filename: string, type?: string) {
   const blob = new Blob([data], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
