@@ -32,8 +32,8 @@ const Editor: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       const currClip = clips.find(({ range }) => {
-        const [start, end] = range;
         if (!videoElRef.current) return null;
+        const [start, end] = range;
         const videoCurrentTime = videoElRef.current.currentTime;
         return videoCurrentTime > start && videoCurrentTime < end;
       });
@@ -41,6 +41,7 @@ const Editor: React.FC = () => {
       if (videoElRef.current) {
         if (currClip?.isHidden) {
           const nextVisibleClip = clips.find(({ range, isHidden }) => {
+            if (!videoElRef.current) return null;
             const [start] = range;
             return !isHidden && videoElRef.current.currentTime < start;
           });
