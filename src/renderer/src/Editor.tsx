@@ -142,7 +142,7 @@ const Editor: React.FC = () => {
             <Button variant="contained" onClick={handleSplitClick}>
               Split
             </Button>
-            <Button variant="contained" onClick={handleExportClick}>
+            <Button variant="contained" disabled={isLoading} onClick={handleExportClick}>
               {isLoading ? 'Loading...' : 'Export'}
             </Button>
           </Stack>
