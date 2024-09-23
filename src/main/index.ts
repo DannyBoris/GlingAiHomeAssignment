@@ -65,22 +65,24 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'));
 
   ipcMain.on('transcode-video', async (event, params) => {
-    console.log('Transcoding video');
-    const outputPath = path.join(__dirname, 'output.mp4');
+    const inputFilePath = path.join(__dirname, 'output.mp4');
+    const outputPath = path.join(__dirname, 'output-merged.mp4');
+    const clipPath = (index: number) => path.join(__dirname, `output-${index}.mp4`);
+
     const { url, clips } = params;
     const visibleClips = clips.filter((clip) => !clip.isHidden);
     const videoResponse = await fetch(url);
     const videoBlob = await videoResponse.blob();
     const arrayBuffer = await videoBlob.arrayBuffer();
-    fs.writeFileSync(outputPath, Buffer.from(arrayBuffer));
+    fs.writeFileSync(inputFilePath, Buffer.from(arrayBuffer));
     console.log('Transcoding video:', url);
     try {
       await Promise.all(
         visibleClips.map((clip, index) => {
           return new Promise<void>((resolve, reject) => {
             const [start, end] = clip.range;
-            const output = path.join(__dirname, `output-${index}.mp4`);
-            ffmpeg(outputPath)
+            const output = clipPath(index);
+            ffmpeg(inputFilePath)
               .setStartTime(start)
               .setDuration(end - start)
               .output(output)
@@ -108,12 +110,16 @@ app.whenReady().then(() => {
       mergeBase
         .on('end', () => {
           event.sender.send('transcode-video-complete', {
-            binary: fs.readFileSync(path.join(__dirname, 'output-merged.mp4')),
+            binary: fs.readFileSync(outputPath),
           });
+          fs.unlinkSync(inputFilePath);
           fs.unlinkSync(outputPath);
+          visibleClips.forEach((_, index) => {
+            fs.unlinkSync(clipPath(index));
+          });
         })
-        .on('error', (err) => console.log(err))
-        .mergeToFile(path.join(__dirname, 'output-merged.mp4'), path.join(__dirname, 'temp'));
+        .on('error', (err) => console.error(err))
+        .mergeToFile(outputPath, path.join(__dirname, 'temp'));
     } catch (e: any) {
       console.log(e.code);
       console.log(e.msg);
