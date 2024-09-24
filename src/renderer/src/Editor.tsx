@@ -111,6 +111,15 @@ const Editor: React.FC = () => {
       setLoading(false);
       downloadFile(binary, 'output.mp4', 'video/mp4');
     });
+    window.electron?.ipcRenderer.on('transcode-video-error', (_, error) => {
+      setLoading(false);
+      alert(error);
+    });
+
+    return () => {
+      window.electron?.ipcRenderer.removeAllListeners('transcode-video-complete');
+      window.electron?.ipcRenderer.removeAllListeners('transcode-video-error');
+    };
   }, []);
 
   async function handleExportClick() {

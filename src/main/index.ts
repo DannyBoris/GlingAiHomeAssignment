@@ -91,8 +91,10 @@ app.whenReady().then(() => {
                 resolve();
               })
               .on('error', (err) => {
-                console.log('Error transcoding clip', index, err);
-                reject(err);
+                console.error(err);
+                event.sender.send('transcode-video-error', {
+                  error: JSON.stringify(err),
+                });
               })
               .run();
           });
@@ -118,7 +120,12 @@ app.whenReady().then(() => {
             fs.unlinkSync(clipPath(index));
           });
         })
-        .on('error', (err) => console.error(err))
+        .on('error', (err) => {
+          console.error(err);
+          event.sender.send('transcode-video-error', {
+            error: JSON.stringify(err),
+          });
+        })
         .mergeToFile(outputPath, path.join(__dirname, 'temp'));
     } catch (e: any) {
       console.log(e.code);
