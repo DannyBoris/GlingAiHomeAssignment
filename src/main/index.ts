@@ -95,6 +95,7 @@ app.whenReady().then(() => {
                 event.sender.send('transcode-video-error', {
                   error: JSON.stringify(err),
                 });
+                reject(err);
               })
               .run();
           });
@@ -130,6 +131,9 @@ app.whenReady().then(() => {
     } catch (e: any) {
       console.log(e.code);
       console.log(e.msg);
+      event.sender.send('transcode-video-error', {
+        error: JSON.stringify(e),
+      });
     }
   });
 
